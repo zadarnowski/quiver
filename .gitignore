@@ -1,0 +1,9 @@
+.DS_Store
+*.o
+*.hi
+*.swp
+*~
+
+.cabal-sandbox/
+cabal.sandbox.config
+dist
