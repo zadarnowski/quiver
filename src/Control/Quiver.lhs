@@ -78,10 +78,12 @@
 > --   returning its delivered value. The base functor must be a monad.
 
 > runEffect :: Monad f => Effect f r -> f r
-> runEffect (Consume _ _ q) = runEffect q
-> runEffect (Produce _ _ q) = runEffect q
-> runEffect (Enclose f)     = f >>= runEffect
-> runEffect (Deliver r)     = return r
+> runEffect p = loop p
+>  where
+>   loop (Consume _ _ q) = loop q
+>   loop (Produce _ _ q) = loop q
+>   loop (Enclose f)     = f >>= loop
+>   loop (Deliver r)     = return r
 
 > -- | The @>>->@ represents a push-based composition of stream processor.
 > --   @p1 >>-> p2@ represents a stream processor that forwards the output
