@@ -1,5 +1,5 @@
 name:           quiver
-version:        0.0.0.1
+version:        0.0.0.2
 synopsis:       Quiver finite stream processing library
 homepage:       https://github.com/zadarnowski/quiver
 category:       Control
@@ -13,8 +13,15 @@ copyright:      Copyright (c) 2015 Patryk Zadarnowski
 description:
 
     /Quiver/ is a powerful stream processing library for
-    combinatorial and monadic transformations of both inductive
-    and coinductive data structures.
+    combinatorial and monadic representation of computations
+    over both inductive and coinductive data streams.
+
+    It is similar to Gabriel Gonzalez's /pipes/ and
+    Michael Snoyman's /conduit/, but generalises both
+    with support for functor-based computations and
+    a clean support for finite (i.e., inductive) data
+    streams, both upstream and downstream of the computation
+    being defined.
 
 cabal-version:  >= 1.18
 build-type:     Simple
@@ -28,7 +35,7 @@ source-repository head
 source-repository this
   type:         git
   location:     https://github.com/zadarnowski/quiver.git
-  tag:          0.0.0.1
+  tag:          0.0.0.2
 
 library
   hs-source-dirs:   src
