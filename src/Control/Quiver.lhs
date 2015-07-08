@@ -19,7 +19,7 @@
 >   -- Defined below:
 >   fetch, fetch',
 >   emit, emit', emit_,
->   liftP,
+>   qlift,
 >   runEffect,
 >   (>>->), (>->>),
 > ) where
@@ -68,10 +68,10 @@
 > emit_ :: b -> P a' a b b' f ()
 > emit_ y = produce y (deliver . const ()) (deliver ())
 
-> -- | @liftP@ lifts the value of a base functor into a stream processor.
+> -- | @qlift@ lifts the value of a base functor into a stream processor.
 
-> liftP :: Functor f => f r -> P a' a b b' f r
-> liftP = enclose . fmap deliver
+> qlift :: Functor f => f r -> P a' a b b' f r
+> qlift = enclose . fmap deliver
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
