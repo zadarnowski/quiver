@@ -19,7 +19,7 @@
 >   -- Defined below:
 >   fetch, fetch',
 >   emit, emit', emit_,
->   qlift, qpure, qid,
+>   qlift, qpure, qid, qconcat,
 >   runEffect,
 >   (>>->), (>->>),
 > ) where
@@ -80,18 +80,25 @@
 > --   by applying @g@ to the initial response value @z@.
 
 > qpure :: (b' -> a') -> (a -> b) -> b' -> P a' a b b' f ()
-> qpure g f = loop1
+> qpure g f = cloop
 >  where
->   loop1 z = consume (g z) loop2 (deliver ())
->   loop2 x = produce (f x) loop1 (deliver ())
+>   cloop z = consume (g z) ploop (deliver ())
+>   ploop x = produce (f x) cloop (deliver ())
 
 > -- | A pull-based identity processor, equivalent to 'qpure id id'.
 
 > qid :: b -> P b a a b f ()
-> qid = loop1
+> qid = cloop
 >  where
->   loop1 z = consume z loop2 (deliver ())
->   loop2 x = produce x loop1 (deliver ())
+>   cloop z = consume z ploop (deliver ())
+>   ploop x = produce x cloop (deliver ())
+
+> qconcat :: [b] -> P [b] [a] a b f ([a], [b])
+> qconcat = cloop
+>  where
+>   cloop ys = consume ys (ploop []) (deliver ([], []))
+>   ploop ys (x:xs) = produce x (\y -> ploop (y:ys) xs) (deliver (xs, reverse ys))
+>   ploop ys [] = cloop (reverse ys)
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
