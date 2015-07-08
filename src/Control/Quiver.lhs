@@ -93,12 +93,25 @@
 >   cloop z = consume z ploop (deliver ())
 >   ploop x = produce x cloop (deliver ())
 
+> -- | A pull-based list flattening processor, delivering the list
+> --   of inputs that could not be produced and a list of responses
+> --   that could not be consumed.
+
 > qconcat :: [b] -> P [b] [a] a b f ([a], [b])
 > qconcat = cloop
 >  where
 >   cloop ys = consume ys (ploop []) (deliver ([], []))
 >   ploop ys (x:xs) = produce x (\y -> ploop (y:ys) xs) (deliver (xs, reverse ys))
 >   ploop ys [] = cloop (reverse ys)
+
+> -- | A pull-based list flattening processor without requests.
+
+> qconcat_ :: P () [a] a b f [a]
+> qconcat_ = cloop
+>  where
+>   cloop = consume () ploop (deliver [])
+>   ploop (x:xs) = produce x (const $ ploop xs) (deliver xs)
+>   ploop [] = cloop
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
