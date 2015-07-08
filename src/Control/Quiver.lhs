@@ -19,7 +19,9 @@
 >   -- Defined below:
 >   fetch, fetch',
 >   emit, emit', emit_,
->   qlift, qpure, qid, qconcat,
+>   qlift,
+>   qpure, qpure_, qid,
+>   qconcat, qconcat_,
 >   runEffect,
 >   (>>->), (>->>),
 > ) where
@@ -92,8 +94,8 @@
 > qpure_ :: (a -> b) -> P () a b b' f ()
 > qpure_ f = cloop
 >  where
->   cloop _ = consume () ploop (deliver ())
->   ploop x = produce (f x) cloop (deliver ())
+>   cloop = consume () ploop (deliver ())
+>   ploop x = produce (f x) (const cloop) (deliver ())
 
 > -- | A pull-based identity processor, equivalent to 'qpure id id'.
 
