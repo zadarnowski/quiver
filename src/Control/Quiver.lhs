@@ -79,8 +79,6 @@
 > --   into an upstream request; the initial request is obtained
 > --   by applying @g@ to the initial response value @z@.
 
-Converts a pure function into a Quiver processor.
-
 > qpure :: (b' -> a') -> (a -> b) -> b' -> P a' a b b' f ()
 > qpure g f = loop1
 >  where
