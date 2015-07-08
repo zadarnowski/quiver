@@ -19,7 +19,7 @@
 >   -- Defined below:
 >   fetch, fetch',
 >   emit, emit', emit_,
->   qlift,
+>   qlift, qpure, qid,
 >   runEffect,
 >   (>>->), (>->>),
 > ) where
@@ -72,6 +72,22 @@
 
 > qlift :: Functor f => f r -> P a' a b b' f r
 > qlift = enclose . fmap deliver
+
+> -- | Converts a pure function into a Quiver processor.
+
+> qpure :: (b' -> a') -> (a -> b) -> b' -> P a' a b b' f ()
+> qpure f g = loop1
+>  where
+>   loop1 z = consume (f z) loop2 (deliver ())
+>   loop2 x = produce (g x) loop1 (deliver ())
+
+> -- | A pull-based identity processor, equivalent to 'qpure id id'.
+
+> qid :: b -> P b a a b f ()
+> qid = loop1
+>  where
+>   loop1 z = consume z loop2 (deliver ())
+>   loop2 x = produce x loop1 (deliver ())
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
