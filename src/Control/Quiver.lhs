@@ -89,7 +89,7 @@
 > --   uses a pure function @f@ to convert every input value into
 > --   an output; equivalent to @qpure id f (const ())@.
 
-> qpure_ :: (a -> b) -> r -> P () a b b' f ()
+> qpure_ :: (a -> b) -> P () a b b' f ()
 > qpure_ f = cloop
 >  where
 >   cloop _ = consume () ploop (deliver ())
