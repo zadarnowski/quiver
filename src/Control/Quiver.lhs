@@ -118,7 +118,7 @@
 
 > -- | A pull-based list flattening processor without requests.
 
-> qconcat_ :: P () [a] a b f [a]
+> qconcat_ :: P () [a] a xx f [a]
 > qconcat_ = cloop
 >  where
 >   cloop = consume () ploop (deliver [])
