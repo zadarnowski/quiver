@@ -92,7 +92,7 @@
 > qpure_ :: (a -> b) -> r -> P () a b b' f ()
 > qpure_ f = cloop
 >  where
->   cloop _ = consume y ploop (deliver ())
+>   cloop _ = consume () ploop (deliver ())
 >   ploop x = produce (f x) cloop (deliver ())
 
 > -- | A pull-based identity processor, equivalent to 'qpure id id'.
