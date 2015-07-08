@@ -73,13 +73,19 @@
 > qlift :: Functor f => f r -> P a' a b b' f r
 > qlift = enclose . fmap deliver
 
-> -- | Converts a pure function into a Quiver processor.
+> -- | @qpure g f z@ produces an infinite consumer/producer that
+> --   uses a pure function @f@ to convert every input value into
+> --   an output, and @f@ to convert each downstream response value
+> --   into an upstream request; the initial request is obtained
+> --   by applying @g@ to the initial response value @z@.
+
+Converts a pure function into a Quiver processor.
 
 > qpure :: (b' -> a') -> (a -> b) -> b' -> P a' a b b' f ()
-> qpure f g = loop1
+> qpure g f = loop1
 >  where
->   loop1 z = consume (f z) loop2 (deliver ())
->   loop2 x = produce (g x) loop1 (deliver ())
+>   loop1 z = consume (g z) loop2 (deliver ())
+>   loop2 x = produce (f x) loop1 (deliver ())
 
 > -- | A pull-based identity processor, equivalent to 'qpure id id'.
 
