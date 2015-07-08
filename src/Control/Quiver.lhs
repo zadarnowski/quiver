@@ -82,7 +82,17 @@
 > qpure :: (b' -> a') -> (a -> b) -> b' -> P a' a b b' f ()
 > qpure g f = cloop
 >  where
->   cloop z = consume (g z) ploop (deliver ())
+>   cloop y = let y' = g y in consume y' ploop (deliver ())
+>   ploop x = let x' = f x in produce x' cloop (deliver ())
+
+> -- | @qpure_ f@ produces an infinite consumer/producer that
+> --   uses a pure function @f@ to convert every input value into
+> --   an output; equivalent to @qpure id f (const ())@.
+
+> qpure_ :: (a -> b) -> r -> P () a b b' f ()
+> qpure_ f = cloop
+>  where
+>   cloop _ = consume y ploop (deliver ())
 >   ploop x = produce (f x) cloop (deliver ())
 
 > -- | A pull-based identity processor, equivalent to 'qpure id id'.
