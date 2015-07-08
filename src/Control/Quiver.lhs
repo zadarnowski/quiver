@@ -33,7 +33,7 @@
 > --   next input value received, or @Nothing@ if the upstream
 > --   processor has been depleted.
 
-> fetch :: a' -> P a' a b' b f (Maybe a)
+> fetch :: a' -> P a' a b b' f (Maybe a)
 > fetch x = consume x (deliver . Just) (deliver Nothing)
 
 > -- | @fetch' x q@ represents a singleton stream processor that
@@ -41,7 +41,7 @@
 > --   input value received, or, if the upstream processor has
 > --   been depleted, continues with the decoupled processor @q@.
 
-> fetch' :: a' -> Producer b' b f a -> P a' a b' b f a
+> fetch' :: a' -> Producer b b' f a -> P a' a b b' f a
 > fetch' x q = consume x deliver q
 
 > -- | @emit y@ represents a singleton stream processor that
@@ -49,7 +49,7 @@
 > --   response received from the downstream processor, or
 > --   @Nothing@ if the downstream processor has been decoupled.
 
-> emit :: b -> P a' a b' b f (Maybe b')
+> emit :: b -> P a' a b b' f (Maybe b')
 > emit y = produce y (deliver . Just) (deliver Nothing)
 
 > -- | @emit' y q@ represents a singleton stream processor that
@@ -58,19 +58,19 @@
 > --   if the downstream processor has been decoupled, continues
 > --   with the depleted processor @q@.
 
-> emit' :: b -> Consumer a' a f b' -> P a' a b' b f b'
+> emit' :: b -> Consumer a' a f b' -> P a' a b b' f b'
 > emit' y q = produce y deliver q
 
 > -- | @emit' y q@ represents a singleton stream processor that
 > --   produces a single output value @y@, ignoring any response
 > --   received from the downstream processor.
 
-> emit_ :: b -> P a' a b' b f ()
+> emit_ :: b -> P a' a b b' f ()
 > emit_ y = produce y (deliver . const ()) (deliver ())
 
 > -- | @liftP@ lifts the value of a base functor into a stream processor.
 
-> liftP :: Functor f => f r -> P a' a b' b f r
+> liftP :: Functor f => f r -> P a' a b b' f r
 > liftP = enclose . fmap deliver
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
@@ -92,7 +92,7 @@
 > --   represents a non-commutative monad, any effects of @p2@ will be
 > --   observed before those of @p1@.
 
-> (>>->) :: Functor f => P a' a b' b f r1 -> P b' b c' c f r2 -> P a' a c' c f (r1, r2)
+> (>>->) :: Functor f => P a' a b b' f r1 -> P b' b c c' f r2 -> P a' a c c' f (r1, r2)
 > (Consume x1 k1 q1) >>-> p2 = consume x1 ((>>-> p2) . k1) (q1 >>-> p2)
 > (Produce y1 k1 q1) >>-> p2 = loop p2
 >  where
@@ -114,7 +114,7 @@
 > --   represents a non-commutative monad, any effects of @p1@ will be
 > --   observed before those of @p2@.
 
-> (>->>) :: Functor f => P a' a b' b f r1 -> P b' b c' c f r2 -> P a' a c' c f (r1, r2)
+> (>->>) :: Functor f => P a' a b b' f r1 -> P b' b c c' f r2 -> P a' a c c' f (r1, r2)
 > p1 >->> (Consume x2 k2 q2) = loop p1
 >  where
 >   loop  (Consume x1 k1 q1) = consume x1 (loop . k1) (loop' q1)
