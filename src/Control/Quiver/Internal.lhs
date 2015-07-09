@@ -131,6 +131,10 @@
 >   fmap ff (Produce y k q) = Produce y (fmap ff . k) (fmap ff q)
 >   fmap ff (Enclose f)     = Enclose (fmap (fmap ff) f)
 >   fmap ff (Deliver r)     = Deliver (ff r)
+>   r <$ (Consume x k q) = Consume x ((r <$) . k) (r <$ q)
+>   r <$ (Produce y k q) = Produce y ((r <$) . k) (r <$ q)
+>   r <$ (Enclose f)     = Enclose (fmap (r <$) f)
+>   r <$ (Deliver _)     = Deliver r
 
 > instance Applicative f => Applicative (P a' a b b' f) where
 >   pure = Deliver
