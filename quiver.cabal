@@ -1,5 +1,5 @@
 name:           quiver
-version:        0.0.0.5
+version:        0.0.0.6
 synopsis:       Quiver finite stream processing library
 homepage:       https://github.com/zadarnowski/quiver
 category:       Control
@@ -35,7 +35,7 @@ source-repository head
 source-repository this
   type:         git
   location:     https://github.com/zadarnowski/quiver.git
-  tag:          0.0.0.5
+  tag:          0.0.0.6
 
 library
   hs-source-dirs:   src

@@ -13,7 +13,7 @@
 
 > module Control.Quiver (
 >   -- Imported from @Control.Quiver.Internal@:
->   P, Consumer, Producer, Effect,
+>   P, SP, Consumer, Producer, Effect,
 >   consume, produce, enclose, deliver,
 >   decouple, deplete,
 >   -- Defined below:
@@ -91,7 +91,7 @@
 > --   uses a pure function @f@ to convert every input value into
 > --   an output; equivalent to @qpure id f (const ())@.
 
-> qpure_ :: (a -> b) -> P () a b b' f ()
+> qpure_ :: (a -> b) -> SP a b f ()
 > qpure_ f = cloop
 >  where
 >   cloop = consume () ploop (deliver ())
@@ -118,7 +118,7 @@
 
 > -- | A pull-based list flattening processor without requests.
 
-> qconcat_ :: P () [a] a xx f [a]
+> qconcat_ :: SP [a] a f [a]
 > qconcat_ = cloop
 >  where
 >   cloop = consume () ploop (deliver [])

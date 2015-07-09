@@ -28,7 +28,7 @@
 > {-# LANGUAGE RankNTypes, TupleSections #-}
 
 > module Control.Quiver.Internal (
->   P (..), Producer, Consumer, Effect,
+>   P (..), SP, Producer, Consumer, Effect,
 >   consume, produce, enclose, deliver,
 >   decouple, deplete,
 > ) where
@@ -101,6 +101,11 @@
 >   --   its ultimate result @r@.
 
 >   Deliver r
+
+> -- | A /simple processor/ with a unit request type and an unspecified
+> --   response type:
+
+> type SP a b f r = forall b' . P () a b b' f r
 
 > -- | A Quiver /producer/, represented by a stream processor
 > --   with unspecified input types.
