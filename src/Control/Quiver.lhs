@@ -17,8 +17,8 @@
 >   consume, produce, enclose, deliver,
 >   decouple, deplete,
 >   -- Defined below:
->   fetch, fetch',
->   emit, emit', emit_,
+>   fetch, fetch_,
+>   emit, emit_,
 >   qlift,
 >   qpure, qpure_, qid,
 >   qconcat, qconcat_,
@@ -35,16 +35,15 @@
 > --   next input value received, or @Nothing@ if the upstream
 > --   processor has been depleted.
 
-> fetch :: a -> P a a' b b' f (Maybe a')
+> fetch :: Functor f => a -> P a a' b b' f (Maybe a')
 > fetch x = consume x (deliver . Just) (deliver Nothing)
 
-> -- | @fetch' x q@ represents a singleton stream processor that
-> --   sends the request value @x@ upstream and delivers the next
-> --   input value received, or, if the upstream processor has
-> --   been depleted, continues with the decoupled processor @q@.
+> -- | @fetch_ x@ represents a singleton stream processor that
+> --   sends the request value @x@ upstream, discarding any
+> --   input received, for symmetry with @emit_@.
 
-> fetch' :: a -> Producer b b' f a' -> P a a' b b' f a'
-> fetch' x q = consume x deliver q
+> fetch_ :: a -> P a a' b b' f ()
+> fetch_ x = consume x (deliver . const ()) (deliver ())
 
 > -- | @emit y@ represents a singleton stream processor that
 > --   produces a single output value @y@ and delivers the
@@ -53,15 +52,6 @@
 
 > emit :: b -> P a a' b b' f (Maybe b')
 > emit y = produce y (deliver . Just) (deliver Nothing)
-
-> -- | @emit' y q@ represents a singleton stream processor that
-> --   produces a single output value @y@ and delivers the
-> --   response received from the downstream processor, or,
-> --   if the downstream processor has been decoupled, continues
-> --   with the depleted processor @q@.
-
-> emit' :: b -> Consumer a a' f b' -> P a a' b b' f b'
-> emit' y q = produce y deliver q
 
 > -- | @emit' y q@ represents a singleton stream processor that
 > --   produces a single output value @y@, ignoring any response
@@ -81,11 +71,11 @@
 > --   into an upstream request; the initial request is obtained
 > --   by applying @g@ to the initial response value @z@.
 
-> qpure :: (b' -> a) -> (a' -> b) -> b' -> P a a' b b' f ()
+> qpure :: (b' -> a) -> (a' -> b) -> b' -> P a a' b b' f (Either a b)
 > qpure g f = cloop
 >  where
->   cloop y = let y' = g y in consume y' ploop (deliver ())
->   ploop x = let x' = f x in produce x' cloop (deliver ())
+>   cloop y = let y' = g y in consume y' ploop (deliver (Left y'))
+>   ploop x = let x' = f x in produce x' cloop (deliver (Right x'))
 
 > -- | @qpure_ f@ produces an infinite consumer/producer that
 > --   uses a pure function @f@ to convert every input value into
@@ -180,3 +170,5 @@
 > p1 >->> (Produce y2 k2 q2) = produce y2 ((p1 >->>) . k2) (p1 >->> q2)
 > p1 >->> (Enclose f2)       = enclose (fmap (p1 >->>) f2)
 > p1 >->> (Deliver r2)       = fmap (, r2) (deplete p1)
+
+
