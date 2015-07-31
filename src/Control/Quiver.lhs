@@ -22,13 +22,14 @@
 >   qlift,
 >   qpure, qpure_, qid,
 >   qconcat, qconcat_,
+>   qfold_,
 >   runEffect,
->   (>>->), (>->>),
+>   (>>->), (>->>), (>&>)
 > ) where
 
 > import Control.Quiver.Internal
 
-> infixl 0 >>->, >->>
+> infixl 0 >>->, >->>, >&>
 
 > -- | @fetch x@ represents a singleton stream processor that
 > --   sends the request value @x@ upstream and delivers the
@@ -115,6 +116,13 @@
 >   ploop (x:xs) = produce x (const $ ploop xs) (deliver xs)
 >   ploop [] = cloop
 
+> -- | A processor that folds an entire stream into a single value.
+
+> qfold_ :: Monoid a => SP a a f ()
+> qfold_ = cloop mempty
+>  where
+>   cloop r = consume () (cloop . mappend r) (emit_ r)
+
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
 > --   returning its delivered value. The base functor must be a monad.
@@ -171,4 +179,10 @@
 > p1 >->> (Enclose f2)       = enclose (fmap (p1 >->>) f2)
 > p1 >->> (Deliver r2)       = fmap (, r2) (deplete p1)
 
+> -- | An infix version of @flip fmap@ with the same precedence and associativity
+> --   as the stream processor composition operators '>->>' and '>>->', indended
+> --   for idiomatic processing of composition deliverables using expressions
+> --   such as @p >->> q >&> fst@.
 
+> (>&>) :: Functor f => P a a' b b' f r -> (r -> r') -> P a a' b b' f r'
+> (>&>) = flip fmap
