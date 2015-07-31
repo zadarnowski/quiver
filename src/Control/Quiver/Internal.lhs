@@ -37,24 +37,24 @@
   Data Types
   ==========
 
-> -- | The main Quiver /stream processor/ type @P a' a b b' f r@,
+> -- | The main Quiver /stream processor/ type @P a a' b b' f r@,
 > --   representing a producer/consumer structure with /bidirectional/,
 > --   /bounded/ communication on both the upstream (consumer) and
 > --   downstream (producer) channel. The six type parameters have
 > --   the following intuitive meaning:
 > --
-> --   * @a'@ is the type of a /request/ values sent by the stream
+> --   * @a@ is the type of a /request/ values sent by the stream
 > --     processor to its upstream partner in order to receive the
 > --     next element of the input stream.
 > --
-> --   * @a@ is the type of the actual information being consumed
+> --   * @a'@ is the type of the actual information being consumed
 > --     by this stream processor (i.e., elements of its input stream.)
 > --
 > --   * @b@ is the type of the actual information being produced
 > --     by this stream processor (i.e., elements of its output stream.)
 > --
 > --   * @b'@ is the type of the /response/ values received from
-> --     the downstream partner for each elemnet of the output
+> --     the downstream partner for each element of the output
 > --     stream produced by this stream processor.
 > --
 > --   * @f@ is the type of the stream processor's /base functor/;
@@ -72,7 +72,7 @@
 > --   only time will tell whether this generalisation has useful
 > --   applications in the real world.
 
-> data P a' a b b' f r =
+> data P a a' b b' f r =
 
 >   -- | @Consume x k q@ represents a /consumer step/, in which
 >   --   the request @x@ is sent upstream and the returned input
@@ -81,7 +81,7 @@
 >   --   delivered its ultimate result, hence reaching the end
 >   --   of processing), to the /decoupled continuation/ @q@.
 
->   Consume a' (a -> P a' a b b' f r) (Producer b b' f r) |
+>   Consume a (a' -> P a a' b b' f r) (Producer b b' f r) |
 
 >   -- | @Produce y k q@ represent a /producer step/, in which
 >   --   the output value @y@ is sent downstream, and the returned
@@ -90,12 +90,12 @@
 >   --   (i.e., delivered its ultimate result, hence reaching the end
 >   --   of processing), to the /depleted continuation/ @q@.
 
->   Produce b  (b' -> P a' a b b' f r) (Consumer a' a f r) |
+>   Produce b  (b' -> P a a' b b' f r) (Consumer a a' f r) |
 
 >   -- | @Enclose@ allows for selective application of the base
 >   --   functor @f@ the the remainder of the computation.
 
->   Enclose (f (P a' a b b' f r)) |
+>   Enclose (f (P a a' b b' f r)) |
 
 >   -- | @Deliver r@ completes processing of information, delivering
 >   --   its ultimate result @r@.
@@ -110,23 +110,23 @@
 > -- | A Quiver /producer/, represented by a stream processor
 > --   with unspecified input types.
 
-> type Producer b b' f r = forall a' a . P a' a b b' f r
+> type Producer b b' f r = forall a a' . P a a' b b' f r
 
 > -- | A Quiver /consumer/, represented by a stream processor
 > --   with unspecified output types.
 
-> type Consumer a' a f r = forall b b' . P a' a b b' f r
+> type Consumer a a' f r = forall b b' . P a a' b b' f r
 
 > -- | A Quiver /effect/, represented by a stream processor
 > --   with unspecified input and output types.
 
-> type Effect f r = forall a' a b b' . P a' a b b' f r
+> type Effect f r = forall a a' b b' . P a a' b b' f r
 
 
   Instances
   =========
 
-> instance Functor f => Functor (P a' a b b' f) where
+> instance Functor f => Functor (P a a' b b' f) where
 >   fmap ff (Consume x k q) = Consume x (fmap ff . k) (fmap ff q)
 >   fmap ff (Produce y k q) = Produce y (fmap ff . k) (fmap ff q)
 >   fmap ff (Enclose f)     = Enclose (fmap (fmap ff) f)
@@ -136,14 +136,14 @@
 >   r <$ (Enclose f)     = Enclose (fmap (r <$) f)
 >   r <$ (Deliver _)     = Deliver r
 
-> instance Applicative f => Applicative (P a' a b b' f) where
+> instance Applicative f => Applicative (P a a' b b' f) where
 >   pure = Deliver
 >   (Consume x k q) <*> p = Consume x ((<*> p) . k) (q <*> decouple p)
 >   (Produce y k q) <*> p = Produce y ((<*> p) . k) (q <*> deplete p)
 >   (Enclose f)     <*> p = Enclose (fmap (<*> p) f)
 >   (Deliver r)     <*> p = fmap r p
 
-> instance Monad f => Monad (P a' a b b' f) where
+> instance Monad f => Monad (P a a' b b' f) where
 >   (Consume x k q) >>= kk = Consume x ((>>= kk) . k) (q >>= decouple . kk)
 >   (Produce y k q) >>= kk = Produce y ((>>= kk) . k) (q >>= deplete . kk)
 >   (Enclose f)     >>= kk = Enclose (fmap (>>= kk) f)
@@ -160,7 +160,7 @@
 > --   delivered its ultimate result, hence reaching the end
 > --   of processing), to the /decoupled continuation/ @q@.
 
-> consume :: a' -> (a -> P a' a b b' f r) -> Producer b b' f r -> P a' a b b' f r
+> consume :: a' -> (a -> P a a' b b' f r) -> Producer b b' f r -> P a a' b b' f r
 > consume = Consume
 
 > -- | @produce y k q@ represent a /producer step/, in which
@@ -170,19 +170,19 @@
 > --   (i.e., delivered its ultimate result, hence reaching the end
 > --   of processing), to the /depleted continuation/ @q@.
 
-> produce :: b  -> (b' -> P a' a b b' f r) -> Consumer a' a f r -> P a' a b b' f r
+> produce :: b  -> (b' -> P a a' b b' f r) -> Consumer a a' f r -> P a a' b b' f r
 > produce = Produce
 
 > -- | @enclose@ allows for selective application of the base
 > --   functor @f@ the the remainder of the computation.
 
-> enclose :: f (P a' a b b' f r) -> P a' a b b' f r
+> enclose :: f (P a a' b b' f r) -> P a a' b b' f r
 > enclose = Enclose
 
 > -- | @deliver r@ completes processing of information, delivering
 > --   its ultimate result @r@.
 
-> deliver :: r -> P a' a b b' f r
+> deliver :: r -> P a a' b b' f r
 > deliver = Deliver
 
 
@@ -194,7 +194,7 @@
 > --   effectively converting @p@ into a producer processor that no longer
 > --   expects to receive any input.
 
-> decouple :: Functor f => P a' a b b' f r -> Producer b b' f r
+> decouple :: Functor f => P a a' b b' f r -> Producer b b' f r
 > decouple (Consume _ _ q) = q
 > decouple (Produce y k q) = Produce y (decouple . k) (decouple q)
 > decouple (Enclose f) = Enclose (fmap decouple f)
@@ -205,7 +205,7 @@
 > --   effectively converting @p@ into a consumer processor that will never
 > --   produce any more output.
 
-> deplete :: Functor f => P a' a b b' f r -> Consumer a' a f r
+> deplete :: Functor f => P a a' b b' f r -> Consumer a a' f r
 > deplete (Consume x k q) = Consume x (deplete . k) (deplete q)
 > deplete (Produce _ _ q) = q
 > deplete (Enclose f) = Enclose (fmap deplete f)
