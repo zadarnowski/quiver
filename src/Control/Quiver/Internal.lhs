@@ -160,7 +160,7 @@
 > --   delivered its ultimate result, hence reaching the end
 > --   of processing), to the /decoupled continuation/ @q@.
 
-> consume :: a' -> (a -> P a a' b b' f r) -> Producer b b' f r -> P a a' b b' f r
+> consume :: a -> (a' -> P a a' b b' f r) -> Producer b b' f r -> P a a' b b' f r
 > consume = Consume
 
 > -- | @produce y k q@ represent a /producer step/, in which
@@ -170,7 +170,7 @@
 > --   (i.e., delivered its ultimate result, hence reaching the end
 > --   of processing), to the /depleted continuation/ @q@.
 
-> produce :: b  -> (b' -> P a a' b b' f r) -> Consumer a a' f r -> P a a' b b' f r
+> produce :: b -> (b' -> P a a' b b' f r) -> Consumer a a' f r -> P a a' b b' f r
 > produce = Produce
 
 > -- | @enclose@ allows for selective application of the base
