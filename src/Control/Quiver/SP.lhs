@@ -78,7 +78,7 @@
 > --   the processor 'p', deliverying 'SPIncomplete' if 'y' could
 > --   not be consumed by the downstream processor.
 
-> (>:>) :: b -> SP a b f e -> SP a b f e
+> (>:>) :: b -> P a a' b b' f (SPResult e) -> P a a' b b' f (SPResult e)
 > y >:> p = produce y (const p) (deliver SPIncomplete)
 
 > -- | @p >>! k@ is equivalent to @p@, with any failures in @p@
@@ -87,7 +87,7 @@
 > --   'SPComplete' or is interrupted by the downstream processor,
 > --   deliverying 'SPIncomplete'.
 
-> (>>!) :: Monad f => SP a b f e -> (e -> SP a b f e') -> SP a b f e'
+> (>>!) :: Monad f => P a a' b b' f (SPResult e) -> (e -> P a a' b b' f (SPResult e')) -> P a a' b b' f (SPResult e')
 > p >>! k = p >>= maybe (deliver SPIncomplete) (maybe (deliver SPComplete) k)
 
 > -- | @sppure f@ produces an infinite consumer/producer that
