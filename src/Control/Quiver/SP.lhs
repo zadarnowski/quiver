@@ -19,7 +19,7 @@
 >   pattern SPComplete,
 >   pattern SPFailed,
 >   pattern SPIncomplete,
->   spfetch, spemit, (>:>),
+>   spfetch, spemit, (>:>), (>>!),
 >   sppure, spid, spconcat,
 >   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
 > ) where
@@ -27,6 +27,7 @@
 > import Control.Quiver
 
 > infixr 5 >:>
+> infixl 1 >>!
 
 > -- | A /simple processor step/ with a unit request type and an unspecified
 > --   response type:
@@ -79,6 +80,15 @@
 
 > (>:>) :: b -> SP a b f e -> SP a b f e
 > y >:> p = produce y (const p) (deliver SPIncomplete)
+
+> -- | @p >>! k@ is equivalent to @p@, with any failures in @p@
+> --   supplied to the continuation processor @k@. Note that
+> --   @k@ is not executed if @p@ completes successfully with
+> --   'SPComplete' or is interrupted by the downstream processor,
+> --   deliverying 'SPIncomplete'.
+
+> (>>!) :: Monad f => SP a b f e -> (e -> SP a b f e') -> SP a b f e'
+> p >>! k = p >>= maybe (deliver SPIncomplete) (maybe (deliver SPComplete) k)
 
 > -- | @sppure f@ produces an infinite consumer/producer that
 > --   uses a pure function @f@ to convert every input value into
