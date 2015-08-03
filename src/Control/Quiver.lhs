@@ -22,7 +22,8 @@
 >   qlift,
 >   qpure, qid, qconcat,
 >   runEffect,
->   (>>->), (>->>), (>&>)
+>   (>>->), (>->>), (>&>),
+>   qcompose,
 > ) where
 
 > import Control.Quiver.Internal
