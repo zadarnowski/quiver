@@ -13,16 +13,14 @@
 
 > module Control.Quiver (
 >   -- Imported from @Control.Quiver.Internal@:
->   P, SP, Consumer, Producer, Effect,
+>   P, Consumer, Producer, Effect,
 >   consume, produce, enclose, deliver,
 >   decouple, deplete,
 >   -- Defined below:
 >   fetch, fetch_,
 >   emit, emit_,
 >   qlift,
->   qpure, qpure_, qid,
->   qconcat, qconcat_,
->   qfold_,
+>   qpure, qid, qconcat,
 >   runEffect,
 >   (>>->), (>->>), (>&>)
 > ) where
@@ -54,7 +52,7 @@
 > emit :: b -> P a a' b b' f (Maybe b')
 > emit y = produce y (deliver . Just) (deliver Nothing)
 
-> -- | @emit' y q@ represents a singleton stream processor that
+> -- | @emit_ y@ represents a singleton stream processor that
 > --   produces a single output value @y@, ignoring any response
 > --   received from the downstream processor.
 
@@ -78,16 +76,6 @@
 >   cloop y = let y' = g y in consume y' ploop (deliver (Left y'))
 >   ploop x = let x' = f x in produce x' cloop (deliver (Right x'))
 
-> -- | @qpure_ f@ produces an infinite consumer/producer that
-> --   uses a pure function @f@ to convert every input value into
-> --   an output; equivalent to @qpure id f (const ())@.
-
-> qpure_ :: (a -> b) -> SP a b f ()
-> qpure_ f = cloop
->  where
->   cloop = consume () ploop (deliver ())
->   ploop x = produce (f x) (const cloop) (deliver ())
-
 > -- | A pull-based identity processor, equivalent to 'qpure id id'.
 
 > qid :: b -> P b a a b f ()
@@ -106,22 +94,6 @@
 >   cloop ys = consume ys (ploop []) (deliver ([], []))
 >   ploop ys (x:xs) = produce x (\y -> ploop (y:ys) xs) (deliver (xs, reverse ys))
 >   ploop ys [] = cloop (reverse ys)
-
-> -- | A pull-based list flattening processor without requests.
-
-> qconcat_ :: SP [a] a f [a]
-> qconcat_ = cloop
->  where
->   cloop = consume () ploop (deliver [])
->   ploop (x:xs) = produce x (const $ ploop xs) (deliver xs)
->   ploop [] = cloop
-
-> -- | A processor that folds an entire stream into a single value.
-
-> qfold_ :: Monoid a => SP a a f ()
-> qfold_ = cloop mempty
->  where
->   cloop r = consume () (cloop . mappend r) (emit_ r)
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
@@ -186,3 +158,24 @@
 
 > (>&>) :: Functor f => P a a' b b' f r -> (r -> r') -> P a a' b b' f r'
 > (>&>) = flip fmap
+
+> -- | The @qcompose f p q@ is precisely equivalent to @p >->> q >&> uncurry f@,
+> --   but faster. A rewrite rule is included to replace applications of
+> --   '>->>' followed by '>&>' into 'qcompose'.
+
+> qcompose :: Functor f => (r1 -> r2 -> r) -> P a a' b b' f r1 -> P b' b c c' f r2 -> P a a' c c' f r
+> qcompose ff p1 (Consume x2 k2 q2) = loop p1
+>  where
+>   loop  (Consume x1 k1 q1) = consume x1 (loop . k1) (loop' q1)
+>   loop  (Produce y1 k1  _) = qcompose ff (k1 x2) (k2 y1)
+>   loop  (Enclose f1)       = enclose (fmap loop f1)
+>   loop  (Deliver r1)       = fmap (ff r1) q2
+>   loop' (Consume  _  _ q1) = loop' q1
+>   loop' (Produce y1 k1  _) = qcompose ff (k1 x2) (k2 y1)
+>   loop' (Enclose f1)       = enclose (fmap loop' f1)
+>   loop' (Deliver r1)       = fmap (ff r1) q2
+> qcompose ff p1 (Produce y2 k2 q2) = produce y2 ((qcompose ff p1) . k2) (qcompose ff p1 q2)
+> qcompose ff p1 (Enclose f2)       = enclose (fmap (qcompose ff p1) f2)
+> qcompose ff p1 (Deliver r2)       = fmap (flip ff r2) (deplete p1)
+
+> {-# RULES "qcompose/fmap" forall p q f . fmap f (p >->> q) = qcompose (curry f) p q #-}
