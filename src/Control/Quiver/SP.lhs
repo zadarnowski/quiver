@@ -14,30 +14,35 @@
 > {-# LANGUAGE PatternSynonyms, RankNTypes, ScopedTypeVariables, TupleSections #-}
 
 > module Control.Quiver.SP (
->   SP,
->   SPResult,
->   pattern SPIncomplete,
+>   module Control.Quiver,
+>   SQ, SP, SPResult,
 >   pattern SPComplete,
 >   pattern SPFailed,
->   spfetch,
+>   pattern SPIncomplete,
+>   spfetch, spemit, (>:>),
 >   sppure, spid, spconcat,
->   spfold, spfoldl, spfoldr,
+>   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
 > ) where
 
 > import Control.Quiver
 
-> -- | A /simple processor/ with a unit request type and an unspecified
+> infixr 5 >:>
+
+> -- | A /simple processor step/ with a unit request type and an unspecified
 > --   response type:
 
-> type SP a b f r = forall b' . P () a b b' f r
+> type SQ a b f r = forall b' . P () a b b' f r
+
+> -- | A /simple processor/ with a unit request type, an unspecified
+> --   response type and a result type tailored towards reporting the
+> --   terminating condition of an intermediate component in a composed
+> --   “processor stack”.
+
+> type SP a b f e = SQ a b f (SPResult e)
 
 > -- | Simple processor result type.
 
 > type SPResult e = Maybe (Maybe e)
-
-> -- | Simple processor result value indicating premature termination of the consumer.
-
-> pattern SPIncomplete = Nothing
 
 > -- | Simple processor result value indicating successful processing of the entire input stream.
 
@@ -47,59 +52,110 @@
 
 > pattern SPFailed e = Just (Just e)
 
+> -- | Simple processor result value indicating premature termination of the consumer.
+
+> pattern SPIncomplete = Nothing
+
 > -- | @spfetch@ represents a singleton simple stream processor that
 > --   sends the request value @x@ upstream and delivers the
 > --   next input value received, or @Nothing@ if the upstream
 > --   processor has been depleted.
 
-> spfetch :: Functor f => SP a b f (Maybe a)
+> spfetch :: Functor f => SQ a b f (Maybe a)
 > spfetch = fetch ()
+
+> -- | @spemit y@ represents a singleton stream processor that
+> --   produces a single output value @y@, delivering either
+> --   'SPComplete' if @y@ was consumed by the downstream processor,
+> --   or 'SPIncomplete' otherwise.
+
+> spemit :: b -> SP a b f e
+> spemit y = produce y (const $ deliver SPComplete) (deliver SPIncomplete)
+
+> -- | @y >:> p@ represents a singleton stream processor that
+> --   produces a single output value @y@ and continues with
+> --   the processor 'p', deliverying 'SPIncomplete' if 'y' could
+> --   not be consumed by the downstream processor.
+
+> (>:>) :: b -> SP a b f e -> SP a b f e
+> y >:> p = produce y (const p) (deliver SPIncomplete)
 
 > -- | @sppure f@ produces an infinite consumer/producer that
 > --   uses a pure function @f@ to convert every input value into
 > --   an output; equivalent to @qpure id f (const ())@.
 
-> sppure :: (a -> b) -> SP a b f ()
+> sppure :: (a -> b) -> SP a b f e
 > sppure f = cloop
 >  where
->   cloop = consume () ploop (deliver ())
->   ploop x = produce (f x) (const cloop) (deliver ())
+>   cloop = consume () ploop (deliver SPComplete)
+>   ploop x = produce (f x) (const cloop) (deliver SPIncomplete)
 
 > -- | A simple identity processor, equivalent to 'sppure id'.
 
-> spid :: SP a a f ()
+> spid :: SP a a f e
 > spid = cloop
 >  where
->   cloop = consume () ploop (deliver ())
->   ploop x = produce x (const cloop) (deliver ())
+>   cloop = consume () ploop (deliver SPComplete)
+>   ploop x = produce x (const cloop) (deliver SPIncomplete)
 
 > -- | A simple list flattening processor requests.
 
-> spconcat :: SP [a] a f [a]
+> spconcat :: SP [a] a f e
 > spconcat = cloop
 >  where
->   cloop = consume () ploop (deliver [])
->   ploop (x:xs) = produce x (const $ ploop xs) (deliver xs)
+>   cloop = consume () ploop (deliver SPComplete)
+>   ploop (x:xs) = produce x (const $ ploop xs) (deliver SPIncomplete)
 >   ploop [] = cloop
 
-> -- | A processor that folds an entire stream into a single value.
+> -- | A processor that delivers the entire input of the stream folded
+> --   into a single value using 'mappend'.
 
-> spfold :: (Functor f, Monoid a) => SP a a f ()
+> spfold :: Monoid a => SQ a x f a
 > spfold = cloop mempty
 >  where
->   cloop r = consume () (cloop . mappend r) (emit_ r)
+>   cloop r = consume () (cloop . mappend r) (deliver r)
 
-> -- | A processor that folds an entire stream into a single value.
+> -- | A processor that delivers the entire input of the stream folded
+> --   into a single value using strict application of 'mappend'.
 
-> spfoldl :: (b -> a -> b) -> b -> SP a b f ()
+> spfold' :: Monoid a => SQ a x f a
+> spfold' = cloop mempty
+>  where
+>   cloop r = r `seq` consume () (cloop . mappend r) (deliver r)
+
+> -- | A processor that delivers the entire input of the stream folded
+> --   into a single value using the supplied left-associative function
+> --   and initial value.
+
+> spfoldl :: (b -> a -> b) -> b -> SQ a x f b
 > spfoldl f = cloop
 >  where
->   cloop r = consume () (cloop . f r) (emit_ r)
+>   cloop r = consume () (cloop . f r) (deliver r)
 
-> -- | A processor that folds an entire stream into a single value.
+> -- | A processor that delivers the entire input of the stream folded
+> --   into a single value using strict application of the supplied
+> --   left-associative function and initial value.
 
-> spfoldr :: (a -> b -> b) -> b -> SP a b f ()
+> spfoldl' :: (b -> a -> b) -> b -> SQ a x f b
+> spfoldl' f = cloop
+>  where
+>   cloop r = r `seq` consume () (cloop . f r) (deliver r)
+
+> -- | A processor that delivers the entire input of the stream folded
+> --   into a single value using the supplied right-associative function
+> --   and initial value.
+
+> spfoldr :: (a -> b -> b) -> b -> SQ a x f b
 > spfoldr f = cloop
 >  where
->   cloop r = consume () (cloop . flip f r) (emit_ r)
+>   cloop r = consume () (cloop . flip f r) (deliver r)
+
+> -- | A processor that delivers the entire input of the stream folded
+> --   into a single value using strict application of the supplied
+> --   right-associative function and initial value.
+
+> spfoldr' :: (a -> b -> b) -> b -> SQ a x f b
+> spfoldr' f = cloop
+>  where
+>   cloop r = r `seq` consume () (cloop . flip f r) (deliver r)
 
