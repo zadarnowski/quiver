@@ -70,7 +70,7 @@
 > --   'SPComplete' if @y@ was consumed by the downstream processor,
 > --   or 'SPIncomplete' otherwise.
 
-> spemit :: b -> SP a b f e
+> spemit :: b -> P a a' b b' f (SPResult e)
 > spemit y = produce y (const $ deliver SPComplete) (deliver SPIncomplete)
 
 > -- | @y >:> p@ represents a singleton stream processor that
