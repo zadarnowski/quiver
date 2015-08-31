@@ -1,5 +1,5 @@
 name:           quiver
-version:        0.0.0.11
+version:        0.0.0.12
 synopsis:       Quiver finite stream processing library
 homepage:       https://github.com/zadarnowski/quiver
 category:       Control
@@ -15,7 +15,7 @@ description:
     /Quiver/ is a powerful stream processing library for
     combinatorial and monadic representation of computations
     over both inductive and coinductive data streams.
-
+    .
     It is similar to Gabriel Gonzalez's /pipes/ and
     Michael Snoyman's /conduit/, but generalises both
     with support for functor-based computations and
@@ -35,7 +35,7 @@ source-repository head
 source-repository this
   type:         git
   location:     https://github.com/zadarnowski/quiver.git
-  tag:          0.0.0.11
+  tag:          0.0.0.12
 
 library
   hs-source-dirs:   src

@@ -22,6 +22,7 @@
 >   spfetch, spemit, (>:>), (>>!),
 >   sppure, spid, spconcat,
 >   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
+>   sptraverse, sptraverse_,
 > ) where
 
 > import Control.Quiver
@@ -169,3 +170,19 @@
 >  where
 >   cloop r = r `seq` consume () (cloop . flip f r) (deliver r)
 
+> -- | A processor that applies a monadic function to every input
+> --   element and emits the resulting value.
+
+> sptraverse :: Monad m => (a -> m b) -> SP a b m e
+> sptraverse k = loop
+>  where
+>   loop = consume () loop' (deliver SPComplete)
+>   loop' x = qlift (k x) >>= (>:> loop)
+
+> -- | A processor that consumes every input elemnet using a monadic function.
+
+> sptraverse_ :: Monad m => (a -> m ()) -> SP a b m e
+> sptraverse_ k = loop
+>  where
+>   loop = consume () loop' (deliver SPComplete)
+>   loop' x = qlift (k x) >> loop
