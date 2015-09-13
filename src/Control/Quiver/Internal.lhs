@@ -147,6 +147,7 @@
 >   (Produce y k q) >>= kk = Produce y ((>>= kk) . k) (q >>= deplete . kk)
 >   (Enclose f)     >>= kk = Enclose (fmap (>>= kk) f)
 >   (Deliver r)     >>= kk = kk r
+>   fail                   = Enclose . fail
 
 > instance MonadTrans (P a a' b b') where
 >   lift = qlift
