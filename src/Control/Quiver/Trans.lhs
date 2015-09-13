@@ -6,10 +6,12 @@
 > -- Stability:   experimental
 > -- Portability: portable
 > --
-> -- This module provides a definition of a /simple processor/
-> -- with a unit request type and an unspecified acknowledgement
-> -- type, together with a number of common combinators for their
-> -- definitions.
+> -- This module provides functions for hoisting stream processors
+> -- over the various well-known monad transformers into the corresponding
+> -- base monad, in a manner analogous to the tranformers' @run@ function.
+> --
+> -- This is particularly useful for composing quiver processors over
+> -- distinct “compatible” monads such as 'ReaderT' and 'StateT'.
 
 > {-# LANGUAGE RankNTypes #-}
 > {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
@@ -36,6 +38,8 @@
 > import Control.Monad.Trans.Writer.Strict as Strict
 > import Control.Quiver.Internal
 
+> -- | Hoists a stream processor from an 'ErrorT e m' monad into its base monad @m@.
+
 > qRunErrorT :: Functor m => P a a' b b' (ErrorT e m) r -> P a a' b b' m (Either e r)
 > qRunErrorT = loop
 >  where
@@ -43,6 +47,8 @@
 >   loop (Produce y k q) = produce y (loop . k) (qRunErrorT q)
 >   loop (Enclose f)     = enclose (either (deliver . Left) loop <$> runErrorT f)
 >   loop (Deliver r)     = deliver (Right r)
+
+> -- | Hoists a stream processor from an 'ExceptT e m' monad into its base monad @m@.
 
 > qRunExceptT :: Functor m => P a a' b b' (ExceptT e m) r -> P a a' b b' m (Either e r)
 > qRunExceptT = loop
@@ -52,6 +58,8 @@
 >   loop (Enclose f)     = enclose (either (deliver . Left) loop <$> runExceptT f)
 >   loop (Deliver r)     = deliver (Right r)
 
+> -- | Hoists a stream processor from a 'MaybeT m' monad into its base monad @m@.
+
 > qRunMaybeT :: Functor m => P a a' b b' (MaybeT m) r -> P a a' b b' m (Maybe r)
 > qRunMaybeT = loop
 >  where
@@ -60,8 +68,12 @@
 >   loop (Enclose f)     = enclose (maybe (deliver Nothing) loop <$> runMaybeT f)
 >   loop (Deliver r)     = deliver (Just r)
 
+> -- | Hoists a stream processor from a lazy 'RWST r w s m' monad into its base monad @m@.
+
 > qRunRWST :: (Functor m, Monoid mw) => P a a' b b' (Lazy.RWST mr mw ms m) r -> mr -> ms -> P a a' b b' m (r, ms, mw)
 > qRunRWST = qRunLazyRWST
+
+> -- | Hoists a stream processor from a lazy 'RWST r w s m' monad into its base monad @m@.
 
 > qRunLazyRWST :: (Functor m, Monoid mw) => P a a' b b' (Lazy.RWST mr mw ms m) r -> mr -> ms -> P a a' b b' m (r, ms, mw)
 > qRunLazyRWST p mr ms = loop p
@@ -73,6 +85,8 @@
 >   run ~(p', ms', mw)    = adj mw <$> qRunLazyRWST p' mr ms'
 >   adj mw ~(r, ms', mw') = (r, ms', mappend mw mw')
 
+> -- | Hoists a stream processor from a strict 'RWST r w s m' monad into its base monad @m@.
+
 > qRunStrictRWST :: (Functor m, Monoid mw) => P a a' b b' (Strict.RWST mr mw ms m) r -> mr -> ms -> P a a' b b' m (r, ms, mw)
 > qRunStrictRWST p mr ms = loop p
 >  where
@@ -83,6 +97,8 @@
 >   run (p', ms', mw)    = adj mw <$> qRunStrictRWST p' mr ms'
 >   adj mw (r, ms', mw') = (r, ms', mappend mw mw')
 
+> -- | Hoists a stream processor from a 'ReaderT r m' monad into its base monad @m@.
+
 > qRunReaderT :: Functor m => P a a' b b' (ReaderT mr m) r -> mr -> P a a' b b' m r
 > qRunReaderT p mr = loop p
 >  where
@@ -91,8 +107,12 @@
 >   loop (Enclose f)     = enclose (loop <$> runReaderT f mr)
 >   loop (Deliver r)     = deliver r
 
+> -- | Hoists a stream processor from a lazy 'StateT s m' monad into its base monad @m@.
+
 > qRunStateT :: Functor m => P a a' b b' (Lazy.StateT ms m) r -> ms -> P a a' b b' m (r, ms)
 > qRunStateT = qRunLazyStateT
+
+> -- | Hoists a stream processor from a lazy 'StateT s m' monad into its base monad @m@.
 
 > qRunLazyStateT :: Functor m => P a a' b b' (Lazy.StateT ms m) r -> ms -> P a a' b b' m (r, ms)
 > qRunLazyStateT p ms = loop p
@@ -103,6 +123,8 @@
 >   loop (Deliver r)     = deliver (r, ms)
 >   run ~(p', ms')       = qRunLazyStateT p' ms'
 
+> -- | Hoists a stream processor from a strict 'StateT s m' monad into its base monad @m@.
+
 > qRunStrictStateT :: Functor m => P a a' b b' (Strict.StateT ms m) r -> ms -> P a a' b b' m (r, ms)
 > qRunStrictStateT p ms = loop p
 >  where
@@ -111,8 +133,12 @@
 >   loop (Enclose f)     = enclose (uncurry qRunStrictStateT <$> Strict.runStateT f ms)
 >   loop (Deliver r)     = deliver (r, ms)
 
+> -- | Hoists a stream processor from a lazy 'WriterT w m' monad into its base monad @m@.
+
 > qRunWriterT :: (Functor m, Monoid mw) => P a a' b b' (Lazy.WriterT mw m) r -> P a a' b b' m (r, mw)
 > qRunWriterT = qRunLazyWriterT
+
+> -- | Hoists a stream processor from a lazy 'WriterT w m' monad into its base monad @m@.
 
 > qRunLazyWriterT :: (Functor m, Monoid mw) => P a a' b b' (Lazy.WriterT mw m) r -> P a a' b b' m (r, mw)
 > qRunLazyWriterT p = loop p
@@ -123,6 +149,8 @@
 >   loop (Deliver r)     = deliver (r, mempty)
 >   run ~(p', mw)        = adj mw <$> qRunLazyWriterT p'
 >   adj mw ~(r, mw')     = (r, mappend mw mw')
+
+> -- | Hoists a stream processor from a strict 'WriterT w m' monad into its base monad @m@.
 
 > qRunStrictWriterT :: (Functor m, Monoid mw) => P a a' b b' (Strict.WriterT mw m) r -> P a a' b b' m (r, mw)
 > qRunStrictWriterT p = loop p
