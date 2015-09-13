@@ -257,4 +257,3 @@
 >   loop (Produce y k q) = produce y (loop . k) (deplete $ qembed ff q)
 >   loop (Enclose f)     = ff f >>= loop
 >   loop (Deliver r)     = deliver r
-
