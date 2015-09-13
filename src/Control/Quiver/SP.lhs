@@ -15,7 +15,7 @@
 
 > module Control.Quiver.SP (
 >   module Control.Quiver,
->   SQ, SP, SPResult,
+>   SQ, SP, SProducer, SConsumer, SEffect, SPResult,
 >   pattern SPComplete,
 >   pattern SPFailed,
 >   pattern SPIncomplete,
@@ -42,6 +42,18 @@
 > --   “processor stack”.
 
 > type SP a b f e = SQ a b f (SPResult e)
+
+> -- | A producer version of a simple processor.
+
+> type SProducer b f e = forall a . SP a b f e
+
+> -- | A consumer version of a simple processor.
+
+> type SConsumer b f e = forall b . SP a b f e
+
+> -- | An effect version of a simple processor.
+
+> type SEffect f e = forall a b . SP a b f e
 
 > -- | Simple processor result type.
 
