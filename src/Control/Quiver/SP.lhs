@@ -49,7 +49,7 @@
 
 > -- | A consumer version of a simple processor.
 
-> type SConsumer b f e = forall b . SP a b f e
+> type SConsumer a f e = forall b . SP a b f e
 
 > -- | An effect version of a simple processor.
 
