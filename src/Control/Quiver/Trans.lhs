@@ -161,6 +161,3 @@
 >   loop (Deliver r)     = deliver (r, mempty)
 >   run (p', mw)         = adj mw <$> qRunStrictWriterT p'
 >   adj mw (r, mw')      = (r, mappend mw mw')
-
-
-
