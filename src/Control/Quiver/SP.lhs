@@ -19,7 +19,8 @@
 >   pattern SPComplete,
 >   pattern SPFailed,
 >   pattern SPIncomplete,
->   spfetch, spemit, (>:>), (>>!),
+>   spcomplete, spfailed, spincomplete,
+>   spfetch, spemit, (>:>), (>>?), (>>!),
 >   sppure, spid, spconcat,
 >   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
 >   sptraverse, sptraverse_,
@@ -28,7 +29,7 @@
 > import Control.Quiver
 
 > infixr 5 >:>
-> infixl 1 >>!
+> infixl 1 >>?, >>!
 
 > -- | A /simple processor step/ with a unit request type and an unspecified
 > --   response type:
@@ -46,17 +47,32 @@
 
 > type SPResult e = Maybe (Maybe e)
 
-> -- | Simple processor result value indicating successful processing of the entire input stream.
+> -- | ('Just Nothing') Simple processor result value indicating successful processing of the entire input stream.
 
 > pattern SPComplete = Just Nothing
 
-> -- | Simple processor result value indicating unsuccessful processing of the input stream.
+> -- | ('Just (Just e)') Simple processor result value indicating unsuccessful processing of the input stream.
 
 > pattern SPFailed e = Just (Just e)
 
-> -- | Simple processor result value indicating premature termination of the consumer.
+> -- | ('Nothing') Simple processor result value indicating premature termination of the consumer.
 
 > pattern SPIncomplete = Nothing
+
+> -- | Delivers an 'SPComplete' result.
+
+> spcomplete :: P a a' b b' f (SPResult e)
+> spcomplete = deliver SPComplete
+
+> -- | Delivers an 'SPFailed' result.
+
+> spfailed :: e -> P a a' b b' f (SPResult e)
+> spfailed = deliver . SPFailed
+
+> -- | Delivers an 'SPIncomplete' result.
+
+> spincomplete :: P a a' b b' f (SPResult e)
+> spincomplete = deliver SPIncomplete
 
 > -- | @spfetch@ represents a singleton simple stream processor that
 > --   sends the request value @x@ upstream and delivers the
@@ -72,7 +88,7 @@
 > --   or 'SPIncomplete' otherwise.
 
 > spemit :: b -> P a a' b b' f (SPResult e)
-> spemit y = produce y (const $ deliver SPComplete) (deliver SPIncomplete)
+> spemit y = produce y (const spcomplete) spincomplete
 
 > -- | @y >:> p@ represents a singleton stream processor that
 > --   produces a single output value @y@ and continues with
@@ -80,16 +96,24 @@
 > --   not be consumed by the downstream processor.
 
 > (>:>) :: b -> P a a' b b' f (SPResult e) -> P a a' b b' f (SPResult e)
-> y >:> p = produce y (const p) (deliver SPIncomplete)
+> y >:> p = produce y (const p) spincomplete
+
+> -- | @p >>? q@ continues processing of @p@ with @q@ but only
+> --   if @p@ completes successsfully by delivering 'SPComplete',
+> --   short-circuiting @q@ if @p@ fails with 'SPIncomplete' or
+> --   'SPFailed'.
+
+> (>>?) :: Monad f => P a a' b b' f (SPResult e) -> P a a' b b' f (SPResult e) -> P a a' b b' f (SPResult e)
+> p >>? q = p >>= maybe spincomplete (maybe q spfailed)
 
 > -- | @p >>! k@ is equivalent to @p@, with any failures in @p@
 > --   supplied to the continuation processor @k@. Note that
 > --   @k@ is not executed if @p@ completes successfully with
 > --   'SPComplete' or is interrupted by the downstream processor,
-> --   deliverying 'SPIncomplete'.
+> --   delivering 'SPIncomplete'.
 
 > (>>!) :: Monad f => P a a' b b' f (SPResult e) -> (e -> P a a' b b' f (SPResult e')) -> P a a' b b' f (SPResult e')
-> p >>! k = p >>= maybe (deliver SPIncomplete) (maybe (deliver SPComplete) k)
+> p >>! k = p >>= maybe spincomplete (maybe spcomplete k)
 
 > -- | @sppure f@ produces an infinite consumer/producer that
 > --   uses a pure function @f@ to convert every input value into
@@ -98,24 +122,24 @@
 > sppure :: (a -> b) -> SP a b f e
 > sppure f = cloop
 >  where
->   cloop = consume () ploop (deliver SPComplete)
->   ploop x = produce (f x) (const cloop) (deliver SPIncomplete)
+>   cloop = consume () ploop spcomplete
+>   ploop x = produce (f x) (const cloop) spincomplete
 
 > -- | A simple identity processor, equivalent to 'sppure id'.
 
 > spid :: SP a a f e
 > spid = cloop
 >  where
->   cloop = consume () ploop (deliver SPComplete)
->   ploop x = produce x (const cloop) (deliver SPIncomplete)
+>   cloop = consume () ploop spcomplete
+>   ploop x = produce x (const cloop) spincomplete
 
 > -- | A simple list flattening processor requests.
 
 > spconcat :: SP [a] a f e
 > spconcat = cloop
 >  where
->   cloop = consume () ploop (deliver SPComplete)
->   ploop (x:xs) = produce x (const $ ploop xs) (deliver SPIncomplete)
+>   cloop = consume () ploop spcomplete
+>   ploop (x:xs) = produce x (const $ ploop xs) spincomplete
 >   ploop [] = cloop
 
 > -- | A processor that delivers the entire input of the stream folded
@@ -176,7 +200,7 @@
 > sptraverse :: Monad m => (a -> m b) -> SP a b m e
 > sptraverse k = loop
 >  where
->   loop = consume () loop' (deliver SPComplete)
+>   loop = consume () loop' spcomplete
 >   loop' x = qlift (k x) >>= (>:> loop)
 
 > -- | A processor that consumes every input elemnet using a monadic function.
@@ -184,5 +208,5 @@
 > sptraverse_ :: Monad m => (a -> m ()) -> SP a b m e
 > sptraverse_ k = loop
 >  where
->   loop = consume () loop' (deliver SPComplete)
+>   loop = consume () loop' spcomplete
 >   loop' x = qlift (k x) >> loop

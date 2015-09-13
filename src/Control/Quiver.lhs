@@ -19,7 +19,7 @@
 >   -- Defined below:
 >   fetch, fetch_,
 >   emit, emit_,
->   qlift,
+>   qlift, qhoist,
 >   qpure, qid, qconcat,
 >   runEffect,
 >   (>>->), (>->>), (>&>),
@@ -28,7 +28,7 @@
 
 > import Control.Quiver.Internal
 
-> infixl 0 >>->, >->>, >&>
+> infixl 1 >>->, >->>, >&>
 
 > -- | @fetch x@ represents a singleton stream processor that
 > --   sends the request value @x@ upstream and delivers the
@@ -59,11 +59,6 @@
 
 > emit_ :: b -> P a a' b b' f ()
 > emit_ y = produce y (deliver . const ()) (deliver ())
-
-> -- | @qlift@ lifts the value of a base functor into a stream processor.
-
-> qlift :: Functor f => f r -> P a a' b b' f r
-> qlift = enclose . fmap deliver
 
 > -- | @qpure g f z@ produces an infinite consumer/producer that
 > --   uses a pure function @f@ to convert every input value into

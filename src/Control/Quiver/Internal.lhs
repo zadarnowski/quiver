@@ -31,7 +31,11 @@
 >   P (..), Producer, Consumer, Effect,
 >   consume, produce, enclose, deliver,
 >   decouple, deplete,
+>   qlift, qhoist, qembed
 > ) where
+
+> import Control.Monad.IO.Class
+> import Control.Monad.Morph
 
 
   Data Types
@@ -144,6 +148,18 @@
 >   (Enclose f)     >>= kk = Enclose (fmap (>>= kk) f)
 >   (Deliver r)     >>= kk = kk r
 
+> instance MonadTrans (P a a' b b') where
+>   lift = qlift
+
+> instance MonadIO f => MonadIO (P a a' b b' f) where
+>   liftIO = lift . liftIO
+
+> instance MFunctor (P a a' b b') where
+>   hoist = qhoist
+
+> instance MMonad (P a a' b b') where
+>   embed = qembed
+
 
   Primitive Combinators
   =====================
@@ -205,4 +221,39 @@
 > deplete (Produce _ _ q) = q
 > deplete (Enclose f) = Enclose (fmap deplete f)
 > deplete (Deliver r) = Deliver r
+
+
+  Generalized Transformers
+  ========================
+
+> -- | @qlift@ lifts the value of a base functor into a stream processor;
+> --   same as 'lift' from 'MonadTrans', but relaxing constraint on
+> --   the base structure from 'Monad' to 'Functor'.
+
+> qlift :: Functor f => f r -> P a a' b b' f r
+> qlift = enclose . fmap deliver
+
+> -- | @qhoist@ morphs the value of a base functor into another
+> --   functor by applying the supplied functor morphism to every
+> --   'Enclose' step of a stream processor; same as 'hoist' from
+> --   'MFunctor' but relaxing the constraint on the base structure
+> --   from 'Monad' to 'Functor'.
+
+> qhoist :: Functor f => (forall x . f x -> g x) -> P a a' b b' f r -> P a a' b b' g r
+> qhoist ff = loop
+>  where
+>   loop (Consume x k q) = consume x (loop . k) (qhoist ff q)
+>   loop (Produce y k q) = produce y (loop . k) (qhoist ff q)
+>   loop (Enclose f)     = enclose (ff (fmap loop f))
+>   loop (Deliver r)     = deliver r
+
+> -- | @qembed@ ...
+
+> qembed :: Monad g => (forall x . f x -> P a a' b b' g x) -> P a a' b b' f r -> P a a' b b' g r
+> qembed ff = loop
+>  where
+>   loop (Consume x k q) = consume x (loop . k) (decouple $ qembed ff q)
+>   loop (Produce y k q) = produce y (loop . k) (deplete $ qembed ff q)
+>   loop (Enclose f)     = ff f >>= loop
+>   loop (Deliver r)     = deliver r
 
