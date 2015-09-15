@@ -25,9 +25,11 @@
 >   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
 >   sptraverse, sptraverse_,
 >   spevery,
+>   sprun,
 > ) where
 
 > import Control.Quiver
+> import Control.Quiver.Internal
 
 > infixr 5 >:>
 > infixl 1 >>?, >>!
@@ -88,9 +90,8 @@
 > spincomplete = deliver SPIncomplete
 
 > -- | @spfetch@ represents a singleton simple stream processor that
-> --   sends the request value @x@ upstream and delivers the
-> --   next input value received, or @Nothing@ if the upstream
-> --   processor has been depleted.
+> --   delivers the next input value received, or @Nothing@ if the
+> --   upstream processor has been depleted.
 
 > spfetch :: Functor f => SQ a b f (Maybe a)
 > spfetch = fetch ()
@@ -228,3 +229,17 @@
 
 > spevery :: Foldable t => t a -> SProducer a f e
 > spevery = foldr (>:>) spcomplete
+
+
+> -- | Evaluates an 'SEffect', i.e., a simple processor that is both detached
+> --   and depleted and hence neither consumes nor produces any input,
+> --   returning its delivered value. The base functor must be a monad.
+
+> sprun :: Monad f => forall a b . SQ a b f r -> f r
+> sprun p = loop p
+>  where
+>   loop (Consume _ _ q) = loop q
+>   loop (Produce _ _ q) = loop q
+>   loop (Enclose f)     = f >>= loop
+>   loop (Deliver r)     = return r
+
