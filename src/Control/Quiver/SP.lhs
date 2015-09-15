@@ -24,6 +24,7 @@
 >   sppure, spid, spconcat,
 >   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
 >   sptraverse, sptraverse_,
+>   spevery,
 > ) where
 
 > import Control.Quiver
@@ -59,11 +60,11 @@
 
 > type SPResult e = Maybe (Maybe e)
 
-> -- | ('Just Nothing') Simple processor result value indicating successful processing of the entire input stream.
+> -- | (@'Just' 'Nothing'@) Simple processor result value indicating successful processing of the entire input stream.
 
 > pattern SPComplete = Just Nothing
 
-> -- | ('Just (Just e)') Simple processor result value indicating unsuccessful processing of the input stream.
+> -- | (@'Just' ('Just' e)'@) Simple processor result value indicating unsuccessful processing of the input stream.
 
 > pattern SPFailed e = Just (Just e)
 
@@ -217,8 +218,13 @@
 
 > -- | A processor that consumes every input elemnet using a monadic function.
 
-> sptraverse_ :: Monad m => (a -> m ()) -> SP a b m e
+> sptraverse_ :: Monad m => (a -> m ()) -> SConsumer a m e
 > sptraverse_ k = loop
 >  where
 >   loop = consume () loop' spcomplete
 >   loop' x = qlift (k x) >> loop
+
+> -- | Produces every element of a foldable structure.
+
+> spevery :: Foldable t => t a -> SProducer a f e
+> spevery = foldr (>:>) spcomplete

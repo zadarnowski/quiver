@@ -31,7 +31,7 @@
 >   P (..), Producer, Consumer, Effect,
 >   consume, produce, enclose, deliver,
 >   decouple, deplete,
->   qlift, qhoist, qembed
+>   qlift, qhoist, qembed,
 > ) where
 
 > import Control.Monad.IO.Class
@@ -227,14 +227,14 @@
   Generalized Transformers
   ========================
 
-> -- | @qlift@ lifts the value of a base functor into a stream processor;
-> --   same as 'lift' from 'MonadTrans', but relaxing constraint on
-> --   the base structure from 'Monad' to 'Functor'.
+> -- | Lifts the value of a base functor into a stream processor;
+> --   same as 'lift' from 'MonadTrans', but relaxing constraint
+> --   on the base structure from 'Monad' to 'Functor'.
 
 > qlift :: Functor f => f r -> P a a' b b' f r
 > qlift = enclose . fmap deliver
 
-> -- | @qhoist@ morphs the value of a base functor into another
+> -- | Morphs the value of a base functor into another
 > --   functor by applying the supplied functor morphism to every
 > --   'Enclose' step of a stream processor; same as 'hoist' from
 > --   'MFunctor' but relaxing the constraint on the base structure
@@ -248,7 +248,8 @@
 >   loop (Enclose f)     = enclose (ff (fmap loop f))
 >   loop (Deliver r)     = deliver r
 
-> -- | @qembed@ ...
+> -- | Embeds a monad within another monad transformer;
+> --   same as 'embed' from 'MMonad'.
 
 > qembed :: Monad g => (forall x . f x -> P a a' b b' g x) -> P a a' b b' f r -> P a a' b b' g r
 > qembed ff = loop

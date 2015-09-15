@@ -19,7 +19,7 @@
 >   -- Defined below:
 >   fetch, fetch_,
 >   emit, emit_,
->   qlift, qhoist,
+>   qlift, qhoist, qembed,
 >   qpure, qid, qconcat,
 >   runEffect,
 >   (>>->), (>->>), (>&>),
