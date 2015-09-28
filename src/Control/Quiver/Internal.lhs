@@ -94,7 +94,7 @@
 >   --   (i.e., delivered its ultimate result, hence reaching the end
 >   --   of processing), to the /depleted continuation/ @q@.
 
->   Produce b  (b' -> P a a' b b' f r) (Consumer a a' f r) |
+>   Produce b (b' -> P a a' b b' f r) (Consumer a a' f r) |
 
 >   -- | @Enclose@ allows for selective application of the base
 >   --   functor @f@ the the remainder of the computation.
