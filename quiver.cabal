@@ -46,4 +46,4 @@ library
                     Control.Quiver.Trans
   build-depends:    base >= 4.8 && < 5,
                     mmorph >= 1.0.4,
-                    transformers >= 0.4.3.0
+                    transformers >= 0.4.2.0
