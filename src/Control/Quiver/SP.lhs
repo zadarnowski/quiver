@@ -20,11 +20,14 @@
 >   pattern SPFailed,
 >   pattern SPIncomplete,
 >   spcomplete, spfailed, spincomplete,
+>   spconsume,
 >   spfetch, spemit, (>:>), (>>?), (>>!),
->   sppure, spid, spconcat,
+>   sppure, spid, spconcat, spfilter,
 >   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
 >   sptraverse, sptraverse_,
 >   spevery,
+>   spforever,
+>   spuntil, spwhile, spWhileJust,
 >   sprun,
 > ) where
 
@@ -89,6 +92,11 @@
 > spincomplete :: P a a' b b' f (SPResult e)
 > spincomplete = deliver SPIncomplete
 
+> -- | Consumes an single input value of a simple stream processor.
+
+> spconsume :: (a' -> P () a' b b' f r) -> (Producer b b' f r) -> P () a' b b' f r
+> spconsume = consume ()
+
 > -- | @spfetch@ represents a singleton simple stream processor that
 > --   delivers the next input value received, or @Nothing@ if the
 > --   upstream processor has been depleted.
@@ -149,12 +157,16 @@
 
 > -- | A simple list flattening processor requests.
 
-> spconcat :: SP [a] a f e
-> spconcat = cloop
+> spconcat :: Foldable t => SP (t a) a f e
+> spconcat = spconsume (foldr (>:>) spconcat) spcomplete
+
+> -- | A simple processor that filters its input stream.
+
+> spfilter :: (a -> Bool) -> SP a a f e
+> spfilter f = loop
 >  where
->   cloop = consume () ploop spcomplete
->   ploop (x:xs) = produce x (const $ ploop xs) spincomplete
->   ploop [] = cloop
+>   loop = spconsume loop' spcomplete
+>   loop' x = if f x then x >:> loop else loop
 
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using 'mappend'.
@@ -162,7 +174,7 @@
 > spfold :: Monoid a => SQ a x f a
 > spfold = cloop mempty
 >  where
->   cloop r = consume () (cloop . mappend r) (deliver r)
+>   cloop r = spconsume (cloop . mappend r) (deliver r)
 
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using strict application of 'mappend'.
@@ -170,7 +182,7 @@
 > spfold' :: Monoid a => SQ a x f a
 > spfold' = cloop mempty
 >  where
->   cloop r = r `seq` consume () (cloop . mappend r) (deliver r)
+>   cloop r = r `seq` spconsume (cloop . mappend r) (deliver r)
 
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using the supplied left-associative function
@@ -179,7 +191,7 @@
 > spfoldl :: (b -> a -> b) -> b -> SQ a x f b
 > spfoldl f = cloop
 >  where
->   cloop r = consume () (cloop . f r) (deliver r)
+>   cloop r = spconsume (cloop . f r) (deliver r)
 
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using strict application of the supplied
@@ -188,7 +200,7 @@
 > spfoldl' :: (b -> a -> b) -> b -> SQ a x f b
 > spfoldl' f = cloop
 >  where
->   cloop r = r `seq` consume () (cloop . f r) (deliver r)
+>   cloop r = r `seq` spconsume (cloop . f r) (deliver r)
 
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using the supplied right-associative function
@@ -197,7 +209,7 @@
 > spfoldr :: (a -> b -> b) -> b -> SQ a x f b
 > spfoldr f = cloop
 >  where
->   cloop r = consume () (cloop . flip f r) (deliver r)
+>   cloop r = spconsume (cloop . flip f r) (deliver r)
 
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using strict application of the supplied
@@ -206,7 +218,7 @@
 > spfoldr' :: (a -> b -> b) -> b -> SQ a x f b
 > spfoldr' f = cloop
 >  where
->   cloop r = r `seq` consume () (cloop . flip f r) (deliver r)
+>   cloop r = r `seq` spconsume (cloop . flip f r) (deliver r)
 
 > -- | A processor that applies a monadic function to every input
 > --   element and emits the resulting value.
@@ -214,7 +226,7 @@
 > sptraverse :: Monad m => (a -> m b) -> SP a b m e
 > sptraverse k = loop
 >  where
->   loop = consume () loop' spcomplete
+>   loop = spconsume loop' spcomplete
 >   loop' x = qlift (k x) >>= (>:> loop)
 
 > -- | A processor that consumes every input elemnet using a monadic function.
@@ -222,7 +234,7 @@
 > sptraverse_ :: Monad m => (a -> m ()) -> SConsumer a m e
 > sptraverse_ k = loop
 >  where
->   loop = consume () loop' spcomplete
+>   loop = spconsume loop' spcomplete
 >   loop' x = qlift (k x) >> loop
 
 > -- | Produces every element of a foldable structure.
@@ -230,6 +242,30 @@
 > spevery :: Foldable t => t a -> SProducer a f e
 > spevery = foldr (>:>) spcomplete
 
+> -- | Produces infinite sequence of monadic results.
+
+> spforever :: Functor f => f a -> SProducer a f e
+> spforever f = loop
+>  where
+>   loop = enclose (fmap (>:> loop) f)
+
+> -- | Interrupts processing on input that matches a specified predicate.
+
+> spuntil :: (a -> Bool) -> SP a a f e
+> spuntil f = loop
+>  where
+>   loop = spconsume loop' spcomplete
+>   loop' x = if f x then spcomplete else x >:> loop
+
+> -- | Interrupts processing on input that doesn't match a specified predicate.
+
+> spwhile :: (a -> Bool) -> SP a a f e
+> spwhile f = spuntil (not . f)
+
+> -- | Interrupts processing on a first occurence of 'Nothing' in the input stream.
+
+> spWhileJust :: SP (Maybe a) a f e
+> spWhileJust = spconsume (maybe spcomplete (>:> spWhileJust)) spcomplete
 
 > -- | Evaluates an 'SEffect', i.e., a simple processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
