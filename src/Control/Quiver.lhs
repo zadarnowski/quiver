@@ -20,7 +20,7 @@
 >   fetch, fetch_,
 >   emit, emit_,
 >   qlift, qhoist, qembed,
->   qpure, qid, qconcat,
+>   qpure, qid, qconcat, qtraverse,
 >   runEffect,
 >   (>>->), (>->>), (+>>->), (>>->+), (+>->>), (>->>+), (>&>),
 >   qcompose,
@@ -62,7 +62,7 @@
 
 > -- | @qpure g f z@ produces an infinite consumer/producer that
 > --   uses a pure function @f@ to convert every input value into
-> --   an output, and @f@ to convert each downstream response value
+> --   an output, and @g@ to convert each downstream response value
 > --   into an upstream request; the initial request is obtained
 > --   by applying @g@ to the initial response value @z@.
 
@@ -90,6 +90,18 @@
 >   cloop ys = consume ys (ploop []) (deliver ([], []))
 >   ploop ys (x:xs) = produce x (\y -> ploop (y:ys) xs) (deliver (xs, reverse ys))
 >   ploop ys [] = cloop (reverse ys)
+
+> -- | @qtraverse g f z@ produces an infinite consumer/producer that
+> --   uses a functor @f@ to convert every input value into
+> --   an output, and @g@ to convert each downstream response value
+> --   into an upstream request; the initial request is obtained
+> --   by applying @g@ to the initial response value @z@.
+
+> qtraverse :: Functor m => (b' -> m a) -> (a' -> m b) -> b' -> P a a' b b' f (Either a b)
+> qtraverse g f = cloop
+>  where
+>   cloop y = enclose (fmap (\y' -> consume y' ploop (deliver (Left y'))) (g y))
+>   ploop x = enclose (fmap (\x' -> produce x' cloop (deliver (Right x'))) (f x))
 
 > -- | Evaluates an /effect/, i.e., a processor that is both detached
 > --   and depleted and hence neither consumes nor produces any input,
