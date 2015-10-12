@@ -33,6 +33,7 @@
 
 > import Control.Quiver
 > import Control.Quiver.Internal
+> import Data.Functor
 
 > infixr 5 >:>
 > infixl 1 >>?, >>!
@@ -223,19 +224,19 @@
 > -- | A processor that applies a monadic function to every input
 > --   element and emits the resulting value.
 
-> sptraverse :: Monad m => (a -> m b) -> SP a b m e
+> sptraverse :: Functor m => (a -> m b) -> SP a b m e
 > sptraverse k = loop
 >  where
 >   loop = spconsume loop' spcomplete
->   loop' x = qlift (k x) >>= (>:> loop)
+>   loop' x = enclose (fmap (>:> loop) (k x))
 
 > -- | A processor that consumes every input elemnet using a monadic function.
 
-> sptraverse_ :: Monad m => (a -> m ()) -> SConsumer a m e
+> sptraverse_ :: Functor m => (a -> m ()) -> SConsumer a m e
 > sptraverse_ k = loop
 >  where
 >   loop = spconsume loop' spcomplete
->   loop' x = qlift (k x) >> loop
+>   loop' x = enclose (k x $> loop)
 
 > -- | Produces every element of a foldable structure.
 
