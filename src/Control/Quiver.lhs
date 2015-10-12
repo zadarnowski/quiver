@@ -97,7 +97,7 @@
 > --   into an upstream request; the initial request is obtained
 > --   by applying @g@ to the initial response value @z@.
 
-> qtraverse :: Functor m => (b' -> m a) -> (a' -> m b) -> b' -> P a a' b b' f (Either a b)
+> qtraverse :: Functor f => (b' -> f a) -> (a' -> f b) -> b' -> P a a' b b' f (Either a b)
 > qtraverse g f = cloop
 >  where
 >   cloop y = enclose (fmap (\y' -> consume y' ploop (deliver (Left y'))) (g y))
