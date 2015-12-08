@@ -52,15 +52,15 @@
 
 > -- | A producer version of a simple processor.
 
-> type SProducer b f e = forall a . SP a b f e
+> type SProducer b f e = forall b' . Producer b b' f (SPResult e)
 
 > -- | A consumer version of a simple processor.
 
-> type SConsumer a f e = forall b . SP a b f e
+> type SConsumer a f e = Consumer () a f (SPResult e)
 
 > -- | An effect version of a simple processor.
 
-> type SEffect f e = forall a b . SP a b f e
+> type SEffect f e = Effect f (SPResult e)
 
 > -- | Simple processor result type.
 
