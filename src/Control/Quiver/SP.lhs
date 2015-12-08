@@ -23,7 +23,7 @@
 >   spconsume,
 >   spfetch, spemit, (>:>), (>>?), (>>!),
 >   sppure, spid, spconcat, spfilter,
->   spfold, spfold', spfoldl, spfoldl', spfoldr, spfoldr',
+>   spfold, spfold', spfoldl, spfoldl', spfoldr,
 >   sptraverse, sptraverse_,
 >   spevery,
 >   spforever,
@@ -206,20 +206,16 @@
 > -- | A processor that delivers the entire input of the stream folded
 > --   into a single value using the supplied right-associative function
 > --   and initial value.
+> --
+> --   Note that this can be quite inefficient for long streams, since
+> --   the entire chain of applications of 'f' needs to be materialised
+> --   on the heap before it can ever be applied to the final value and
+> --   reduced at the end of the stream.
 
 > spfoldr :: (a -> b -> b) -> b -> SQ a x f b
-> spfoldr f = cloop
+> spfoldr f r = cloop id
 >  where
->   cloop r = spconsume (cloop . flip f r) (deliver r)
-
-> -- | A processor that delivers the entire input of the stream folded
-> --   into a single value using strict application of the supplied
-> --   right-associative function and initial value.
-
-> spfoldr' :: (a -> b -> b) -> b -> SQ a x f b
-> spfoldr' f = cloop
->  where
->   cloop r = r `seq` spconsume (cloop . flip f r) (deliver r)
+>   cloop k = spconsume (\a -> cloop (k . f a)) (deliver (k r))
 
 > -- | A processor that applies a monadic function to every input
 > --   element and emits the resulting value.
