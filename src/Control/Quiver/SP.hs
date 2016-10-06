@@ -102,7 +102,7 @@ spconsume = consume ()
 --   delivers the next input value received, or @Nothing@ if the
 --   upstream processor has been depleted.
 
-spfetch :: Functor f => SQ a b f (Maybe a)
+spfetch :: SQ a b f (Maybe a)
 spfetch = fetch ()
 
 -- | @spemit y@ represents a singleton stream processor that
