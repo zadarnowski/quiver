@@ -68,14 +68,17 @@ type SPResult e = Maybe (Maybe e)
 
 -- | (@'Just' 'Nothing'@) Simple processor result value indicating successful processing of the entire input stream.
 
+pattern SPComplete :: SPResult e
 pattern SPComplete = Just Nothing
 
 -- | (@'Just' ('Just' e)'@) Simple processor result value indicating unsuccessful processing of the input stream.
 
+pattern SPFailed :: e -> SPResult e
 pattern SPFailed e = Just (Just e)
 
 -- | ('Nothing') Simple processor result value indicating premature termination of the consumer.
 
+pattern SPIncomplete :: SPResult e
 pattern SPIncomplete = Nothing
 
 -- | Delivers an 'SPComplete' result.
