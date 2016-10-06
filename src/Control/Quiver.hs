@@ -35,7 +35,7 @@ infixl 1 >>->, >->>, +>>->, >>->+, +>->>, >->>+, >&>
 --   next input value received, or @Nothing@ if the upstream
 --   processor has been depleted.
 
-fetch :: Functor f => a -> P a a' b b' f (Maybe a')
+fetch :: a -> P a a' b b' f (Maybe a')
 fetch x = consume x (deliver . Just) (deliver Nothing)
 
 -- | @fetch_ x@ represents a singleton stream processor that
