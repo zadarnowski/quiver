@@ -189,6 +189,8 @@ p1 >->> (Produce y2 k2 q2) = produce y2 ((p1 >->>) . k2) (p1 >->> q2)
 p1 >->> (Enclose f2)       = enclose (fmap (p1 >->>) f2)
 p1 >->> (Deliver r2)       = fmap (, r2) (deplete p1)
 
+{-# INLINE[2] (>->>) #-}
+
 -- | The @+>->>@ represents a pull-based composition of stream processors.
 --   that is partial on the left (supply) side, so that @p1 +>->> p2@
 --   represents a stream processor that forwards the output of @p1@ to @p2@,
