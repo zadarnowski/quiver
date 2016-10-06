@@ -95,7 +95,7 @@ spincomplete = deliver SPIncomplete
 
 -- | Consumes an single input value of a simple stream processor.
 
-spconsume :: (a' -> P () a' b b' f r) -> (Producer b b' f r) -> P () a' b b' f r
+spconsume :: (a' -> P () a' b b' f r) -> Producer b b' f r -> P () a' b b' f r
 spconsume = consume ()
 
 -- | @spfetch@ represents a singleton simple stream processor that
@@ -269,7 +269,7 @@ spWhileJust = spconsume (maybe spcomplete (>:> spWhileJust)) spcomplete
 --   returning its delivered value. The base functor must be a monad.
 
 sprun :: Monad f => forall a b . SQ a b f r -> f r
-sprun p = loop p
+sprun = loop
  where
   loop (Consume _ _ q) = loop q
   loop (Produce _ _ q) = loop q

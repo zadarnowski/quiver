@@ -141,7 +141,7 @@ qRunWriterT = qRunLazyWriterT
 -- | Hoists a stream processor from a lazy 'WriterT w m' monad into its base monad @m@.
 
 qRunLazyWriterT :: (Functor m, Monoid mw) => P a a' b b' (Lazy.WriterT mw m) r -> P a a' b b' m (r, mw)
-qRunLazyWriterT p = loop p
+qRunLazyWriterT = loop
  where
   loop (Consume x k q) = consume x (loop . k) (qRunLazyWriterT q)
   loop (Produce y k q) = produce y (loop . k) (qRunLazyWriterT q)
@@ -153,7 +153,7 @@ qRunLazyWriterT p = loop p
 -- | Hoists a stream processor from a strict 'WriterT w m' monad into its base monad @m@.
 
 qRunStrictWriterT :: (Functor m, Monoid mw) => P a a' b b' (Strict.WriterT mw m) r -> P a a' b b' m (r, mw)
-qRunStrictWriterT p = loop p
+qRunStrictWriterT = loop
  where
   loop (Consume x k q) = consume x (loop . k) (qRunStrictWriterT q)
   loop (Produce y k q) = produce y (loop . k) (qRunStrictWriterT q)

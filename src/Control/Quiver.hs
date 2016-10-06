@@ -108,7 +108,7 @@ qtraverse g f = cloop
 --   returning its delivered value. The base functor must be a monad.
 
 runEffect :: Monad f => Effect f r -> f r
-runEffect p = loop p
+runEffect = loop
  where
   loop (Consume _ _ q) = loop q
   loop (Produce _ _ q) = loop q
@@ -252,8 +252,8 @@ qcompose ff p1 (Consume x2 k2 q2) = loop p1
   loop' (Produce y1 k1  _) = qcompose ff (k1 x2) (k2 y1)
   loop' (Enclose f1)       = enclose (fmap loop' f1)
   loop' (Deliver r1)       = fmap (ff r1) q2
-qcompose ff p1 (Produce y2 k2 q2) = produce y2 ((qcompose ff p1) . k2) (qcompose ff p1 q2)
+qcompose ff p1 (Produce y2 k2 q2) = produce y2 (qcompose ff p1 . k2) (qcompose ff p1 q2)
 qcompose ff p1 (Enclose f2)       = enclose (fmap (qcompose ff p1) f2)
-qcompose ff p1 (Deliver r2)       = fmap (flip ff r2) (deplete p1)
+qcompose ff p1 (Deliver r2)       = fmap (`ff` r2) (deplete p1)
 
 {-# RULES "qcompose/fmap" forall p q f . fmap f (p >->> q) = qcompose (curry f) p q #-}
